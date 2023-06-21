@@ -4,79 +4,79 @@ import mediapipe as mp
 import numpy as np
 from sklearn import svm
 
-# Gesture labels and corresponding landmarks
-gesture_labels = {
-    0: 'Like',
-    1: 'Ok',
-    2: 'Stop',
-    3: 'Peace',
-    4: 'Fist'
+# Oznake gesta i odgovarajući landmarkovi
+oznake_gesta = {
+    0: 'Like',  # Sviđa mi se
+    1: 'Ok',  # U redu
+    2: 'Stop',  # Stani
+    3: 'Peace',  # Mir
+    4: 'Fist'  # Šaka
 }
 
-# Define gesture detection thresholds
-gesture_thresholds = {
-    'Like': 0.12,   # Threshold value for Like gesture
-    'Ok': 0.2,      # Threshold value for Ok gesture
-    'Stop': 0.4,    # Threshold value for Stop gesture
-    'Peace': 0.6,   # Threshold value for Peace gesture
-    'Fist': 0.8     # Threshold value for Fist gesture
+# Definiranje pragova prepoznavanja gesta
+pragovi_gesta = {
+    'Like': 0.12,  # Prag za gestu "Sviđa mi se"
+    'Ok': 0.2,  # Prag za gestu "U redu"
+    'Stop': 0.4,  # Prag za gestu "Stani"
+    'Peace': 0.6,  # Prag za gestu "Mir"
+    'Fist': 0.8  # Prag za gestu "Šaka"
 }
 
-# Initialize MediaPipe hand tracking
+# Inicijalizacija MediaPipe biblioteke za praćenje ruku
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
-# Capture video from webcam
+# Snimanje videa pomoću web kamere
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
-    print("Cannot open camera")
+    print("Nije moguće otvoriti kameru")
     exit()
 
-# Initialize variables
+# Inicijalizacija varijabli
 training_data = []
 training_labels = []
 data_count = 0
 target_data_count = 200
 
-# Collect training data
+# Prikupljanje podataka za treniranje
 gesture_count = 0
-current_gesture = gesture_labels[gesture_count]
+current_gesture = oznake_gesta[gesture_count]
 collect_data = False
 
-# Create OpenCV window with named trackbars
-cv2.namedWindow("Hand Gestures")
+# Kreiranje OpenCV prozora s imenovanim trakbarima
+cv2.namedWindow("Prepoznavanje gesta ruke")
 
-# Initialize gesture_label outside the loop
-gesture_label = 'Unknown'
+# Inicijalizacija "gesture_label" izvan petlje
+gesture_label = 'Nepoznato'
 
 while True:
-    # Read frame from video capture
+    # Čitanje frejma iz snimke
     ret, frame = cap.read()
     if not ret:
-        print("Cannot receive frame (stream end?). Exiting...")
+        print("Nije moguće primiti frejm (kraj snimanja?). Izlazim...")
         break
 
-    # Convert the frame to RGB for MediaPipe
+    # Konverzija frejma u RGB za MediaPipe
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # Process the frame with MediaPipe
+    # Procesuiranje frejma pomoću MediaPipe
     results = hands.process(frame_rgb)
 
-    # Recognize hand gestures
+    # Prepoznavanje gesta ruke
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
-            # Draw hand landmarks
+            # Crtanje landmarkova ruke
             for landmark in hand_landmarks.landmark:
                 x, y = int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0])
                 cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
-            thumb_landmark = hand_landmarks.landmark[4]  # Thumb tip landmark
-            index_finger_landmark = hand_landmarks.landmark[8]  # Index finger tip landmark
-            middle_finger_landmark = hand_landmarks.landmark[12]  # Middle finger tip landmark
-            ring_finger_landmark = hand_landmarks.landmark[16]  # Ring finger tip landmark
-            pinky_finger_landmark = hand_landmarks.landmark[20]  # Pinky finger tip landmark
+            thumb_landmark = hand_landmarks.landmark[4]  # Landmark vrha palca
+            index_finger_landmark = hand_landmarks.landmark[8]  # Landmark vrha kažiprsta
+            middle_finger_landmark = hand_landmarks.landmark[12]  # Landmark vrha srednjeg prsta
+            ring_finger_landmark = hand_landmarks.landmark[16]  # Landmark vrha prstenjaka
+            pinky_finger_landmark = hand_landmarks.landmark[20]  # Landmark vrha malog prsta
 
-            # Calculate distances between fingertips
+            # Računanje udaljenosti između vrhova prstiju
             thumb_index_distance = np.linalg.norm(
                 np.array([thumb_landmark.x, thumb_landmark.y]) - np.array([index_finger_landmark.x, index_finger_landmark.y]))
             thumb_middle_distance = np.linalg.norm(
@@ -86,57 +86,57 @@ while True:
             thumb_pinky_distance = np.linalg.norm(
                 np.array([thumb_landmark.x, thumb_landmark.y]) - np.array([pinky_finger_landmark.x, pinky_finger_landmark.y]))
 
-            # Create feature vector
+            # Kreiranje vektora značajki
             feature_vector = [thumb_index_distance, thumb_middle_distance, thumb_ring_distance, thumb_pinky_distance]
 
-            # Collect training data
+            # Prikupljanje podataka za treniranje
             if collect_data:
                 training_data.append(feature_vector)
                 training_labels.append(gesture_count)
                 data_count += 1
-                print("Collected data for", current_gesture + ":", data_count)
+                print("Prikupljeni podaci za", current_gesture + ":", data_count)
 
                 if data_count == target_data_count:
                     gesture_count += 1
-                    if gesture_count < len(gesture_labels):
-                        current_gesture = gesture_labels[gesture_count]
-                        data_count = 0  # Reset data count for the next gesture
-                        print("Collecting data for", current_gesture + "...")
+                    if gesture_count < len(oznake_gesta):
+                        current_gesture = oznake_gesta[gesture_count]
+                        data_count = 0  # Resetiranje brojača podataka za sljedeći gestu
+                        print("Prikupljanje podataka za", current_gesture + "...")
                     else:
                         collect_data = False
-                        print("Data collection stopped.")
+                        print("Prikupljanje podataka zaustavljeno.")
 
-    # Display frame
-    cv2.imshow('Hand Gestures', frame)
+    # Prikazivanje frejma
+    cv2.imshow('Prepoznavanje gesta ruke', frame)
 
-    # Check if the 'c' key is pressed
+    # Provjera pritisnutih tipki 'c'
     key = cv2.waitKey(1) & 0xFF
     if key == ord('c'):
         collect_data = not collect_data
         if collect_data:
-            print("Collecting data for", current_gesture + "...")
+            print("Prikupljanje podataka za", current_gesture + "...")
         else:
-            print("Data collection stopped.")
+            print("Prikupljanje podataka zaustavljeno.")
 
-    # Exit when the 'q' key is pressed
+    # Izlaz iz programa ako je pritisnuta tipka 'q'
     if key == ord('q'):
         break
 
-# Release video capture and destroy OpenCV windows
+# Oslobađanje snimanja videa i zatvaranje OpenCV prozora
 cap.release()
 cv2.destroyAllWindows()
 
-# Convert training data and labels to numpy arrays
+# Pretvaranje podataka i oznaka za treniranje u numpy nizove
 training_data = np.array(training_data)
 training_labels = np.array(training_labels)
 
-# Train SVM classifier
+# Treniranje SVM klasifikatora
 svm_classifier = svm.SVC()
 svm_classifier.fit(training_data, training_labels)
 
-# Save SVM classifier to file
+# Spremanje SVM klasifikatora u datoteku
 joblib.dump(svm_classifier, 'svm_classifier.joblib')
 
-# Save training data and labels to file
+# Spremanje podataka i oznaka za treniranje u datoteke
 np.save('training_data.npy', training_data)
 np.save('training_labels.npy', training_labels)
