@@ -6,7 +6,7 @@ from sklearn import svm
 # Gesture labels and corresponding landmarks
 gesture_labels = {
     0: 'Like',
-    1: 'Dislike',
+    1: 'Ok',
     2: 'Stop',
     3: 'Peace',
     4: 'Fist'
@@ -15,7 +15,7 @@ gesture_labels = {
 # Define gesture detection thresholds
 gesture_thresholds = {
     'Like': 0.12,   # Threshold value for Like gesture
-    'Dislike': 0.2,   # Threshold value for Dislike gesture
+    'Ok': 0.2,   # Threshold value for Dislike gesture
     'Stop': 0.4,   # Threshold value for Stop gesture
     'Peace': 0.6,   # Threshold value for Peace gesture
     'Fist': 0.8   # Threshold value for Fist gesture
@@ -73,6 +73,16 @@ while True:
 
         # Draw gesture label on the frame
         cv2.putText(frame, gesture_label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+
+        # Draw dots on fingertips
+        radius = 5
+        color = (0, 255, 0)  # Green color
+        thickness = -1  # Fill the dot
+        cv2.circle(frame, (int(thumb_landmark.x * frame.shape[1]), int(thumb_landmark.y * frame.shape[0])), radius, color, thickness)
+        cv2.circle(frame, (int(index_finger_landmark.x * frame.shape[1]), int(index_finger_landmark.y * frame.shape[0])), radius, color, thickness)
+        cv2.circle(frame, (int(middle_finger_landmark.x * frame.shape[1]), int(middle_finger_landmark.y * frame.shape[0])), radius, color, thickness)
+        cv2.circle(frame, (int(ring_finger_landmark.x * frame.shape[1]), int(ring_finger_landmark.y * frame.shape[0])), radius, color, thickness)
+        cv2.circle(frame, (int(pinky_finger_landmark.x * frame.shape[1]), int(pinky_finger_landmark.y * frame.shape[0])), radius, color, thickness)
 
     # Display the frame
     cv2.imshow('Hand Gestures', frame)
