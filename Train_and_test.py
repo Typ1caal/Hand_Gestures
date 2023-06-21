@@ -1,10 +1,8 @@
 import cv2
+import joblib
 import mediapipe as mp
 import numpy as np
 from sklearn import svm
-import pyttsx3
-import joblib
-
 
 # Gesture labels and corresponding landmarks
 gesture_labels = {
@@ -28,15 +26,17 @@ gesture_thresholds = {
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
-# Initialize text-to-speech engine
-engine = pyttsx3.init()
-
 # Capture video from webcam
 cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+    print("Cannot open camera")
+    exit()
 
 # Initialize variables
 training_data = []
 training_labels = []
+data_count = 0
+target_data_count = 100
 
 # Collect training data
 gesture_count = 0
@@ -46,6 +46,9 @@ collect_data = False
 while True:
     # Read frame from video capture
     ret, frame = cap.read()
+    if not ret:
+        print("Cannot receive frame (stream end?). Exiting...")
+        break
 
     # Convert the frame to RGB for MediaPipe
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -55,7 +58,12 @@ while True:
 
     # Recognize hand gestures
     if results.multi_hand_landmarks:
-        hand_landmarks = results.multi_hand_landmarks[0]
+        for hand_landmarks in results.multi_hand_landmarks:
+            # Draw hand landmarks
+            for landmark in hand_landmarks.landmark:
+                x, y = int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0])
+                cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+
         thumb_landmark = hand_landmarks.landmark[4]  # Thumb tip landmark
         index_finger_landmark = hand_landmarks.landmark[8]  # Index finger tip landmark
         middle_finger_landmark = hand_landmarks.landmark[12]  # Middle finger tip landmark
@@ -91,29 +99,32 @@ while True:
             if gesture_label != 'Unknown':
                 training_data.append([thumb_index_distance, thumb_middle_distance, thumb_ring_distance, thumb_pinky_distance])
                 training_labels.append(current_gesture)
+                data_count += 1
                 print("Data collected for gesture:", current_gesture)
+                print("Data count:", data_count)
 
-        # Display the frame with gesture label
-        cv2.putText(frame, "Gesture: " + gesture_label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.imshow('Hand Gestures', frame)
+                if data_count >= target_data_count:
+                    gesture_count += 1
+                    if gesture_count >= len(gesture_labels):
+                        break
 
-    # User input to choose gesture label
+                    current_gesture = gesture_labels[gesture_count]
+                    data_count = 0
+                    print("Switched to gesture:", current_gesture)
+                    print("Collecting data for gesture:", current_gesture)
+                    print("Make the gesture and keep it steady...")
+
+    # Display the frame with gesture label and landmarks
+    cv2.putText(frame, "Gesture: " + gesture_label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.imshow('Hand Gestures', frame)
+
+    # User input to start collecting data
     key = cv2.waitKey(1)
-    if key == ord('l'):  # 'l' key for selecting 'Like' gesture
+    if key == ord('c'):  # 'c' key to start collecting data
         collect_data = True
-        current_gesture = 'Like'
-    elif key == ord('d'):  # 'd' key for selecting 'Dislike' gesture
-        collect_data = True
-        current_gesture = 'Dislike'
-    elif key == ord('s'):  # 's' key for selecting 'Stop' gesture
-        collect_data = True
-        current_gesture = 'Stop'
-    elif key == ord('p'):  # 'p' key for selecting 'Peace' gesture
-        collect_data = True
-        current_gesture = 'Peace'
-    elif key == ord('f'):  # 'f' key for selecting 'Fist' gesture
-        collect_data = True
-        current_gesture = 'Fist'
+        print("Collecting data for gesture:", current_gesture)
+        print("Make the gesture and keep it steady...")
+
     elif key == ord('q'):  # 'q' key to exit the program
         break
 
