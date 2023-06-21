@@ -1,6 +1,10 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+from sklearn import svm
+import pyttsx3
+import joblib
+
 
 # Gesture labels and corresponding landmarks
 gesture_labels = {
@@ -24,6 +28,9 @@ gesture_thresholds = {
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
+# Initialize text-to-speech engine
+engine = pyttsx3.init()
+
 # Capture video from webcam
 cap = cv2.VideoCapture(0)
 
@@ -32,7 +39,11 @@ training_data = []
 training_labels = []
 
 # Collect training data
-while len(training_data) < 1000:
+gesture_count = 0
+current_gesture = gesture_labels[gesture_count]
+collect_data = False
+
+while True:
     # Read frame from video capture
     ret, frame = cap.read()
 
@@ -76,18 +87,47 @@ while len(training_data) < 1000:
                 gesture_label = 'Fist'
 
         # Add data to training set
-        if gesture_label != 'Unknown':
-            training_data.append([thumb_index_distance, thumb_middle_distance, thumb_ring_distance, thumb_pinky_distance])
-            training_labels.append(list(gesture_labels.keys())[list(gesture_labels.values()).index(gesture_label)])
+        if collect_data:
+            if gesture_label != 'Unknown':
+                training_data.append([thumb_index_distance, thumb_middle_distance, thumb_ring_distance, thumb_pinky_distance])
+                training_labels.append(current_gesture)
+                print("Data collected for gesture:", current_gesture)
+
+        # Display the frame with gesture label
+        cv2.putText(frame, "Gesture: " + gesture_label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.imshow('Hand Gestures', frame)
+
+    # User input to choose gesture label
+    key = cv2.waitKey(1)
+    if key == ord('l'):  # 'l' key for selecting 'Like' gesture
+        collect_data = True
+        current_gesture = 'Like'
+    elif key == ord('d'):  # 'd' key for selecting 'Dislike' gesture
+        collect_data = True
+        current_gesture = 'Dislike'
+    elif key == ord('s'):  # 's' key for selecting 'Stop' gesture
+        collect_data = True
+        current_gesture = 'Stop'
+    elif key == ord('p'):  # 'p' key for selecting 'Peace' gesture
+        collect_data = True
+        current_gesture = 'Peace'
+    elif key == ord('f'):  # 'f' key for selecting 'Fist' gesture
+        collect_data = True
+        current_gesture = 'Fist'
+    elif key == ord('q'):  # 'q' key to exit the program
+        break
 
 # Convert training data to NumPy arrays
 training_data = np.array(training_data)
 training_labels = np.array(training_labels)
 
-# Save training data
-np.save('training_data.npy', training_data)
-np.save('training_labels.npy', training_labels)
+# Train the classifier
+svm_model = svm.SVC(kernel='linear', C=1.0)
+svm_model.fit(training_data, training_labels)
 
-# Release the video capture
+# Save the trained model
+joblib.dump(svm_model, 'gesture_classifier.pkl')
+
+# Release the video capture and close the windows
 cap.release()
 cv2.destroyAllWindows()
