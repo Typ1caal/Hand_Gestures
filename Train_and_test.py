@@ -36,12 +36,18 @@ if not cap.isOpened():
 training_data = []
 training_labels = []
 data_count = 0
-target_data_count = 100
+target_data_count = 1
 
 # Collect training data
 gesture_count = 0
 current_gesture = gesture_labels[gesture_count]
 collect_data = False
+
+# Create OpenCV window with named trackbars
+cv2.namedWindow("Hand Gestures")
+cv2.createTrackbar("Collect Data", "Hand Gestures", 0, 1, lambda x: None)
+
+gesture_label = 'Unknown'  # Declare gesture_label outside the if statement
 
 while True:
     # Read frame from video capture
@@ -81,7 +87,6 @@ while True:
             np.array([thumb_landmark.x, thumb_landmark.y]) - np.array([pinky_finger_landmark.x, pinky_finger_landmark.y]))
 
         # Determine gesture based on distances and thresholds
-        gesture_label = 'Unknown'
         if thumb_index_distance > gesture_thresholds['Fist']:
             if thumb_middle_distance < gesture_thresholds['Like']:
                 gesture_label = 'Like'
@@ -93,6 +98,8 @@ while True:
                 gesture_label = 'Peace'
             elif thumb_index_distance <= gesture_thresholds['Fist']:
                 gesture_label = 'Fist'
+        else:
+            gesture_label = 'Unknown'
 
         # Add data to training set
         if collect_data:
@@ -116,14 +123,24 @@ while True:
 
     # Display the frame with gesture label and landmarks
     cv2.putText(frame, "Gesture: " + gesture_label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+    # Display data collection status indicator
+    if collect_data:
+        cv2.putText(frame, "Collecting Data: ON", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    else:
+        cv2.putText(frame, "Collecting Data: OFF", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
     cv2.imshow('Hand Gestures', frame)
 
-    # User input to start collecting data
+    # User input to start/stop collecting data
     key = cv2.waitKey(1)
-    if key == ord('c'):  # 'c' key to start collecting data
-        collect_data = True
-        print("Collecting data for gesture:", current_gesture)
-        print("Make the gesture and keep it steady...")
+    if key == ord('c'):  # 'c' key to start/stop collecting data
+        collect_data = not collect_data
+        if collect_data:
+            print("Collecting data for gesture:", current_gesture)
+            print("Make the gesture and keep it steady...")
+        else:
+            print("Stopped collecting data")
 
     elif key == ord('q'):  # 'q' key to exit the program
         break
