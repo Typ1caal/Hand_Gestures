@@ -47,6 +47,7 @@ for gesta in geste:
 for gesta, accuracy in točnosti_gesta.items():
     print(f"Točnost učenja za gestu '{gesta}': {accuracy}")
 
+
 # Snimanje videa pomoću web kamere
 cap = cv2.VideoCapture(0)
 
