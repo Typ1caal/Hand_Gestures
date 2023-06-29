@@ -33,6 +33,20 @@ y_train = np.load('training_labels.npy', allow_pickle=True)
 svm_model = svm.SVC()
 svm_model.fit(X_train, y_train)
 
+
+# Izračunavanje točnosti učenja za svaku gestu
+geste = list(oznake_gesta.values())
+točnosti_gesta = {}
+for gesta in geste:
+    X_gesta = X_train[y_train == geste.index(gesta)]
+    y_gesta = y_train[y_train == geste.index(gesta)]
+    accuracy = svm_model.score(X_gesta, y_gesta)
+    točnosti_gesta[gesta] = accuracy
+
+# Ispisivanje točnosti učenja za svaku gestu
+for gesta, accuracy in točnosti_gesta.items():
+    print(f"Točnost učenja za gestu '{gesta}': {accuracy}")
+
 # Snimanje videa pomoću web kamere
 cap = cv2.VideoCapture(0)
 
